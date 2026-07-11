@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dual Energy Inhaler</title>
+
+<style>
+    body {
+        font-family: "Segoe UI", sans-serif;
+        background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+        color: white;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        overflow: hidden;
+    }
+
+    .app {
+        background: rgba(255,255,255,0.12);
+        border-radius: 20px;
+        padding: 30px;
+        width: 340px;
+        box-shadow: 0 15px 30px rgba(0,0,0,0.4);
+        position: relative;
+        z-index: 2;
+        animation: fadeIn 1s ease;
+    }
+
+    h1 {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    .screen {
+        display: none;
+        animation: slideIn 0.6s ease;
+    }
+
+    .screen.active {
+        display: block;
+    }
+
+    button {
+        width: 100%;
+        padding: 12px;
+        margin: 8px 0;
+        border: none;
+        border-radius: 14px;
+        font-size: 15px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+        color: #000;
+    }
+
+    button:hover {
+        transform: scale(1.05);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    }
+
+    .summary {
+        background: rgba(0,0,0,0.35);
+        padding: 15px;
+        border-radius: 14px;
+        line-height: 1.6;
+        position: relative;
+        z-index: 3;
+    }
+
+    .color-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-weight: bold;
+        color: #000;
+    }
+
+    /* 💨 Vapor Container */
+    .vapor {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    .smoke {
+        position: absolute;
+        bottom: -60px;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        opacity: 0.25;
+        filter: blur(8px);
+        animation: rise 6s infinite ease-in;
+    }
+
+    @keyframes rise {
+        0% {
+            transform: translateY(0) scale(0.6);
+            opacity: 0.35;
+        }
+        100% {
+            transform: translateY(-500px) scale(1.4);
+            opacity: 0;
+        }
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: scale(0.9); }
+        to { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes slideIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+</head>
+
+<body>
+
+<!-- 💨 Vapor Layer -->
+<div class="vapor" id="vaporLayer"></div>
+
+<div class="app">
+    <h1>🌬️ Dual Energy</h1>
+
+    <div class="screen active" id="categoryScreen">
+        <button style="background:#66e0ff" onclick="selectCategory('Mint Blast')">Mint Blast</button>
+        <button style="background:#ffb347" onclick="selectCategory('Fruity')">Fruity</button>
+        <button style="background:#9cff9c" onclick="selectCategory('Refreshing')">Refreshing</button>
+    </div>
+
+    <div class="screen" id="flavorScreen"></div>
+
+    <div class="screen" id="brandScreen">
+        <button style="background:#4dd2ff" onclick="selectBrand('Causone')">Causone</button>
+        <button style="background:#00ffcc" onclick="selectBrand('Energy')">Energy</button>
+        <button style="background:#66ff99" onclick="selectBrand('Pek')">Pek</button>
+        <button style="background:#33cc99" onclick="selectBrand('Spag Health')">Spag Health</button>
+    </div>
+
+    <div class="screen" id="summaryScreen">
+        <div class="summary" id="summaryBox"></div>
+        <button style="background:#fff" onclick="restart()">🔁 Start Again</button>
+    </div>
+</div>
+
+<script>
+let selectedCategory = "";
+let selectedFlavor = "";
+let selectedDetails = "";
+let selectedBrand = "";
+let selectedColor = "";
+
+const vaporLayer = document.getElementById("vaporLayer");
+
+const flavors = {
+    "Mint Blast": [
+        ["Causone", "Smooth minty taste with cooling sensation.", "#4dd2ff"],
+        ["Energy", "Strong mint flavor that boosts alertness.", "#00ffcc"],
+        ["Pek", "Your energy buddy on-the-go.", "#66ff99"],
+        ["Spag Health", "Your health companion with cool freshness.", "#33cc99"]
+    ],
+    "Fruity": [
+        ["Watermelon Bomber", "Sweet watermelon burst with an explosive twist.", "#ff3399"],
+		["Mango Vodka", "Summer mango with a sweet-strange taste coolness.", "#ffff00"],
+		["Guava & Apple Martini", "Tropical guava & green apple fusion.", "#99ff66"],
+		["Lemon-Lime Mojito", "Citrusy mojito freshness.", "#00ff00"],
+		["Blackcurrant Berry", "Rich berry taste with zest.", "#660066"],
+		["Green Apple", "Crisp, refreshing, and tangy apple flavor.", "#33cc33"],
+		["Lychee", "Sweet and juicy tropical delight.", "#ff33cc"],
+		["Lemon", "Cool citrus flavor with a minty twist.", "#ffff66"],
+		["Coconut", "Creamy summer tropical freshness.", "#ffffff"],
+		["Mangosteen", "Smooth fruity sweetness with a cool feel.", "#cc00cc"],
+		["Peach", "Sweet and tangy with a juicy finish.", "#ff9999"],
+		["Pomelo", "Zesty citrus flavor with a mild sweetness.", "#ff6666"]
+    ],
+    "Refreshing": [
+        ["Cola", "Classic cola fizz flavor.", "#cc3300"],
+		["Red Bull", "Energy drink-inspired boost when you're on-the-go.", "#ffff99"],
+		["Cold Brew Coffee", "Rich roasted coffee aroma that keeps you awake.", "#996600"],
+		["Green tea", "Calming Zen-like green tea from Asia.", "#99ff66"],
+		["Ginseng", "Earthy herbal flavor known for revitalizing energy just like theanine.", "#ffcc66"]
+    ]
+};
+
+function showScreen(id) {
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+}
+
+function selectCategory(category) {
+    selectedCategory = category;
+    const flavorScreen = document.getElementById("flavorScreen");
+    flavorScreen.innerHTML = "";
+
+    flavors[category].forEach(f => {
+        const btn = document.createElement("button");
+        btn.textContent = f[0];
+        btn.style.background = `linear-gradient(135deg, ${f[2]}, #fff)`;
+        btn.onclick = () => selectFlavor(f[0], f[1], f[2]);
+        flavorScreen.appendChild(btn);
+    });
+
+    showScreen("flavorScreen");
+}
+
+function selectFlavor(flavor, details, color) {
+    selectedFlavor = flavor;
+    selectedDetails = details;
+    selectedColor = color;
+    showScreen("brandScreen");
+}
+
+function selectBrand(brand) {
+    selectedBrand = brand;
+    startVapor(selectedColor);
+
+    document.getElementById("summaryBox").innerHTML = `
+        <strong>Category:</strong> ${selectedCategory}<br>
+        <strong>Flavor:</strong>
+        <span class="color-badge" style="background:${selectedColor}">
+            ${selectedFlavor}
+        </span><br>
+        <strong>Brand:</strong> ${selectedBrand}<br>
+        <strong>Details:</strong> ${selectedDetails}
+    `;
+
+    showScreen("summaryScreen");
+}
+
+/* 💨 Vapor generator */
+function startVapor(color) {
+    vaporLayer.innerHTML = "";
+    for (let i = 0; i < 18; i++) {
+        const smoke = document.createElement("div");
+        smoke.className = "smoke";
+        smoke.style.left = Math.random() * 100 + "%";
+        smoke.style.background = color;
+        smoke.style.animationDelay = (Math.random() * 5) + "s";
+        smoke.style.animationDuration = (4 + Math.random() * 4) + "s";
+        vaporLayer.appendChild(smoke);
+    }
+}
+
+function restart() {
+    vaporLayer.innerHTML = "";
+    selectedCategory = selectedFlavor = selectedBrand = selectedDetails = selectedColor = "";
+    showScreen("categoryScreen");
+}
+</script>
+
+</body>
+</html>
